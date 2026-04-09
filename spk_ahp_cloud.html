@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SPK AHP — Pemilihan Cloud Provider</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0f1e;--bg2:#0f1729;--bg3:#141d35;
+  --panel:#1a2340;--border:#2a3558;--border2:#3a4a78;
+  --accent:#4f8ef7;--accent2:#7c3aed;
+  --green:#10b981;--amber:#f59e0b;--red:#ef4444;
+  --text:#e2e8f0;--muted:#7a8aa8;
+  --mono:'JetBrains Mono',monospace;
+  --sans:'Space Grotesk',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:linear-gradient(rgba(79,142,247,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(79,142,247,.04) 1px,transparent 1px);background-size:40px 40px}
+.shell{position:relative;z-index:1;display:flex;min-height:100vh}
+/* SIDEBAR */
+.sidebar{width:260px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;overflow-y:auto}
+.logo{padding:28px 24px 20px;border-bottom:1px solid var(--border)}
+.logo-badge{display:inline-flex;align-items:center;font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--accent);text-transform:uppercase;background:rgba(79,142,247,.12);padding:4px 10px;border-radius:4px;border:1px solid rgba(79,142,247,.25);margin-bottom:10px}
+.logo h1{font-size:17px;font-weight:700;line-height:1.3;color:#fff}
+.logo p{font-size:11px;color:var(--muted);margin-top:4px}
+.nav-group{padding:16px 12px 8px}
+.nav-group-label{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:0 12px;margin-bottom:6px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;transition:all .15s;border:1px solid transparent;margin-bottom:2px}
+.nav-item:hover{background:var(--panel);color:var(--text)}
+.nav-item.active{background:rgba(79,142,247,.15);color:var(--accent);border-color:rgba(79,142,247,.25)}
+.nav-icon{font-size:15px;width:20px;text-align:center}
+.sidebar-footer{margin-top:auto;padding:16px;border-top:1px solid var(--border)}
+.db-status{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted)}
+.db-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+/* MAIN */
+.main{margin-left:260px;flex:1;padding:32px 36px;min-height:100vh}
+.page{display:none}.page.active{display:block;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.page-header{margin-bottom:28px}
+.page-header h2{font-size:24px;font-weight:700;color:#fff;margin-bottom:6px}
+.page-header p{font-size:14px;color:var(--muted);line-height:1.6}
+.breadcrumb{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.breadcrumb span{color:var(--border2)}
+/* CARD */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:20px}
+.card-title{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.card-title::after{content:'';flex:1;height:1px;background:var(--border)}
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.stat-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:18px 20px;position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.stat-card.blue::before{background:var(--accent)}.stat-card.purple::before{background:var(--accent2)}
+.stat-card.green::before{background:var(--green)}.stat-card.amber::before{background:var(--amber)}
+.stat-label{font-size:11px;font-weight:500;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em}
+.stat-val{font-size:26px;font-weight:700;color:#fff;font-family:var(--mono)}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:4px}
+/* TABLE */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);padding:10px 14px;text-align:left;border-bottom:1px solid var(--border)}
+td{padding:12px 14px;border-bottom:1px solid rgba(42,53,88,.5);color:var(--text)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(79,142,247,.04)}
+.mono{font-family:var(--mono);font-size:12px}
+/* BADGE */
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:600}
+.badge-blue{background:rgba(79,142,247,.15);color:var(--accent);border:1px solid rgba(79,142,247,.3)}
+.badge-green{background:rgba(16,185,129,.15);color:var(--green);border:1px solid rgba(16,185,129,.3)}
+.badge-amber{background:rgba(245,158,11,.15);color:var(--amber);border:1px solid rgba(245,158,11,.3)}
+.badge-red{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3)}
+.badge-purple{background:rgba(124,58,237,.15);color:#a78bfa;border:1px solid rgba(124,58,237,.3)}
+/* FORM */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-group.full{grid-column:1/-1}
+label{font-size:12px;font-weight:500;color:var(--muted)}
+input,select,textarea{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--text);font-family:var(--sans);outline:none;transition:border .15s;width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+select option{background:var(--bg3)}
+textarea{resize:vertical;min-height:80px}
+/* BUTTON */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;font-family:var(--sans)}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:#3b7de8;transform:translateY(-1px)}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}.btn-ghost:hover{border-color:var(--border2);color:var(--text)}
+.btn-danger{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3)}.btn-danger:hover{background:rgba(239,68,68,.25)}
+.btn-success{background:var(--green);color:#fff}.btn-success:hover{background:#0ea572}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+/* MATRIX */
+.matrix-wrap{overflow-x:auto;margin-bottom:8px}
+.matrix-tbl{border-collapse:collapse;font-size:12px;font-family:var(--mono)}
+.matrix-tbl th,.matrix-tbl td{border:1px solid var(--border);padding:8px 10px;text-align:center;min-width:95px}
+.matrix-tbl th{background:var(--bg3);color:var(--muted);font-size:11px;text-transform:none;letter-spacing:0;min-width:140px}
+.matrix-tbl td{background:var(--panel);color:var(--text)}
+.matrix-tbl .diag{background:rgba(79,142,247,.1);color:var(--accent)}
+.matrix-tbl .recip{color:var(--muted);font-style:italic;background:rgba(42,53,88,.3)}
+.matrix-tbl input{background:transparent;border:1px solid transparent;text-align:center;width:76px;color:var(--text);font-family:var(--mono);font-size:12px;padding:3px 4px;border-radius:4px;outline:none}
+.matrix-tbl input:focus{border-color:var(--accent);background:rgba(79,142,247,.08)}
+.matrix-tbl input:hover{border-color:var(--border2)}
+/* BAR */
+.bar-chart{display:flex;flex-direction:column;gap:12px}
+.bar-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.bar-name{font-size:12px;color:var(--text)}.bar-val{font-size:12px;font-family:var(--mono);color:var(--accent)}
+.bar-track{height:8px;background:var(--bg3);border-radius:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;transition:width .6s ease}
+/* RESULT HERO */
+.result-hero{background:linear-gradient(135deg,rgba(79,142,247,.12),rgba(124,58,237,.08));border:1px solid rgba(79,142,247,.3);border-radius:14px;padding:28px 32px;margin-bottom:24px;display:flex;align-items:center;gap:24px}
+.result-icon{font-size:48px;flex-shrink:0}
+.result-badge{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);padding:3px 10px;border-radius:4px;margin-bottom:8px}
+.result-name{font-size:26px;font-weight:700;color:#fff;margin-bottom:4px}
+.result-sub{font-size:13px;color:var(--muted)}
+.result-score{margin-left:auto;text-align:right;flex-shrink:0}
+.result-score-val{font-size:42px;font-weight:700;font-family:var(--mono);color:var(--accent)}
+.result-score-label{font-size:11px;color:var(--muted)}
+/* TABS */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px;flex-wrap:wrap}
+.tab{padding:10px 18px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+.tab:hover{color:var(--text)}.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+/* ALERT */
+.alert{padding:12px 16px;border-radius:8px;font-size:13px;display:flex;align-items:flex-start;gap:10px;margin-bottom:16px}
+.alert-info{background:rgba(79,142,247,.1);border:1px solid rgba(79,142,247,.25);color:#93c5fd}
+.alert-warn{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);color:#fcd34d}
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(4px)}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:28px;width:520px;max-width:92vw;max-height:82vh;overflow-y:auto;animation:slideUp .2s ease}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:none;opacity:1}}
+.modal-title{font-size:16px;font-weight:700;color:#fff;margin-bottom:4px}
+.modal-sub{font-size:13px;color:var(--muted);margin-bottom:20px}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 18px;font-size:13px;display:flex;align-items:center;gap:10px;z-index:9999;transform:translateY(60px);opacity:0;transition:all .3s;max-width:320px}
+.toast.show{transform:none;opacity:1}
+.toast-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+/* MISC */
+.saaty-ref{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:16px;font-size:12px}
+.saaty-grid{display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+.saaty-num{font-family:var(--mono);color:var(--accent);font-weight:600}
+.saaty-desc{color:var(--muted)}
+.tag{display:inline-block;padding:2px 7px;border-radius:3px;font-size:10px;font-weight:600;font-family:var(--mono);background:var(--bg3);color:var(--muted);border:1px solid var(--border)}
+.cr-good{color:var(--green)}.cr-bad{color:var(--red)}
+.divider{height:1px;background:var(--border);margin:20px 0}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.empty-state{text-align:center;padding:32px;color:var(--muted);font-size:13px}
+/* PRINT */
+@media print{
+  .sidebar,.btn-row,.toast,.modal-overlay{display:none!important}
+  .main{margin-left:0!important;padding:16px!important}
+  body,body::before{background:#fff!important;background-image:none!important;color:#000!important}
+  .card{border:1px solid #ccc!important;background:#fff!important;break-inside:avoid;margin-bottom:12px!important}
+  .result-hero{background:#f0f4ff!important;border:1px solid #aaa!important}
+  .result-score-val,.bar-val,.mono,.result-name{color:#000!important}
+  .page{display:block!important}.page:not(.active){display:none!important}
+  th,td{color:#000!important;border-color:#ccc!important}
+  .badge,.tag{border:1px solid #999!important;color:#333!important;background:#f5f5f5!important}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-badge">⬡ SPK System</div>
+    <h1>AHP Cloud<br>Decision Engine</h1>
+    <p>Pemilihan Provider Cloud</p>
+  </div>
+  <nav>
+    <div class="nav-group">
+      <div class="nav-group-label">Menu Utama</div>
+      <div class="nav-item" data-page="dashboard"  onclick="navigate('dashboard')"><span class="nav-icon">◈</span> Dashboard</div>
+      <div class="nav-item" data-page="kriteria"   onclick="navigate('kriteria')"><span class="nav-icon">◧</span> Manajemen Kriteria</div>
+      <div class="nav-item" data-page="alternatif" onclick="navigate('alternatif')"><span class="nav-icon">◫</span> Manajemen Alternatif</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Proses AHP</div>
+      <div class="nav-item" data-page="matriks" onclick="navigate('matriks')"><span class="nav-icon">⊞</span> Input Matriks</div>
+      <div class="nav-item" data-page="hitung"  onclick="navigate('hitung')"><span class="nav-icon">⊛</span> Perhitungan AHP</div>
+      <div class="nav-item" data-page="hasil"   onclick="navigate('hasil')"><span class="nav-icon">◉</span> Hasil & Rekomendasi</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Data</div>
+      <div class="nav-item" data-page="riwayat" onclick="navigate('riwayat')"><span class="nav-icon">◷</span> Riwayat Keputusan</div>
+      <div class="nav-item" data-page="tentang" onclick="navigate('tentang')"><span class="nav-icon">◌</span> Tentang Sistem</div>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="db-status"><div class="db-dot"></div><span>DB: localStorage aktif</span></div>
+    <div style="font-size:10px;color:var(--muted);margin-top:6px;font-family:var(--mono)">v2.1 · Tugas SPK AHP</div>
+  </div>
+</aside>
+
+<main class="main">
+
+<!-- DASHBOARD -->
+<div class="page" id="page-dashboard">
+  <div class="breadcrumb"><span>SPK</span> › Dashboard</div>
+  <div class="page-header">
+    <h2>Dashboard Sistem Pendukung Keputusan</h2>
+    <p>Sistem Pemilihan Cloud Provider menggunakan metode Analytic Hierarchy Process (AHP).<br>Studi Kasus: Era Tech Winter + Kepatuhan UU PDP Indonesia (UU No.27/2022).</p>
+  </div>
+  <div class="stats-row">
+    <div class="stat-card blue"><div class="stat-label">Total Kriteria</div><div class="stat-val" id="stat-kriteria">0</div><div class="stat-sub">faktor penilaian</div></div>
+    <div class="stat-card purple"><div class="stat-label">Total Alternatif</div><div class="stat-val" id="stat-alternatif">0</div><div class="stat-sub">pilihan provider</div></div>
+    <div class="stat-card green"><div class="stat-label">Analisis Selesai</div><div class="stat-val" id="stat-analisis">0</div><div class="stat-sub">keputusan tersimpan</div></div>
+    <div class="stat-card amber"><div class="stat-label">Status Terakhir</div><div class="stat-val" style="font-size:15px;padding-top:5px" id="stat-status">—</div><div class="stat-sub" id="stat-cr">—</div></div>
+  </div>
+  <div class="two-col">
+    <div class="card"><div class="card-title">◧ Kriteria Aktif</div><div id="dash-kriteria-list"></div></div>
+    <div class="card"><div class="card-title">◫ Alternatif Provider</div><div id="dash-alt-list"></div></div>
+  </div>
+  <div class="card"><div class="card-title">◉ Rekomendasi Terakhir</div><div id="dash-result"></div></div>
+  <div class="card">
+    <div class="card-title">⊙ Alur Proses AHP</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <div style="flex:1;min-width:130px;background:var(--bg3);border-radius:10px;padding:16px;border:1px solid var(--border)">
+        <div style="font-size:20px;margin-bottom:8px">1️⃣</div>
+        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px">Input Kriteria & Alternatif</div>
+        <div style="font-size:11px;color:var(--muted)">Definisikan faktor keputusan dan pilihan provider yang akan dibandingkan</div>
+      </div>
+      <div style="flex:1;min-width:130px;background:var(--bg3);border-radius:10px;padding:16px;border:1px solid var(--border)">
+        <div style="font-size:20px;margin-bottom:8px">2️⃣</div>
+        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px">Matriks Perbandingan</div>
+        <div style="font-size:11px;color:var(--muted)">Isi nilai perbandingan berpasangan menggunakan skala Saaty 1–9</div>
+      </div>
+      <div style="flex:1;min-width:130px;background:var(--bg3);border-radius:10px;padding:16px;border:1px solid var(--border)">
+        <div style="font-size:20px;margin-bottom:8px">3️⃣</div>
+        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px">Hitung Bobot & CR</div>
+        <div style="font-size:11px;color:var(--muted)">Sistem menghitung eigen vector, lambda max, CI dan Consistency Ratio</div>
+      </div>
+      <div style="flex:1;min-width:130px;background:var(--bg3);border-radius:10px;padding:16px;border:1px solid var(--border)">
+        <div style="font-size:20px;margin-bottom:8px">4️⃣</div>
+        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px">Skor & Rekomendasi</div>
+        <div style="font-size:11px;color:var(--muted)">Skor akhir = bobot kriteria × bobot alternatif, pilih nilai tertinggi</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- KRITERIA -->
+<div class="page" id="page-kriteria">
+  <div class="breadcrumb"><span>SPK</span> › Manajemen Kriteria</div>
+  <div class="page-header"><h2>Manajemen Kriteria Penilaian</h2><p>Kelola faktor penilaian sebagai dasar perbandingan antar provider cloud.</p></div>
+  <div class="alert alert-info">ℹ️ Sistem dilengkapi 5 kriteria default berdasarkan konteks UU PDP dan era Tech Winter. Anda dapat menambah atau mereset ke default.</div>
+  <div class="card">
+    <div class="card-title">⊕ Tambah Kriteria Baru</div>
+    <div class="form-grid">
+      <div class="form-group"><label>Kode Kriteria</label><input id="k-kode" placeholder="contoh: C6" maxlength="5"></div>
+      <div class="form-group"><label>Nama Kriteria</label><input id="k-nama" placeholder="contoh: Ketersediaan SLA"></div>
+      <div class="form-group full"><label>Deskripsi</label><textarea id="k-desc" placeholder="Jelaskan pentingnya kriteria ini..."></textarea></div>
+      <div class="form-group"><label>Tipe</label><select id="k-tipe"><option value="benefit">Benefit (semakin tinggi semakin baik)</option><option value="cost">Cost (semakin rendah semakin baik)</option></select></div>
+      <div class="form-group"><label>Prioritas</label><select id="k-prioritas"><option value="very_high">Sangat Tinggi</option><option value="high">Tinggi</option><option value="medium">Sedang</option><option value="low">Rendah</option></select></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="tambahKriteria()">⊕ Tambah Kriteria</button>
+      <button class="btn btn-ghost" onclick="resetKriteria()">↺ Reset ke Default</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">◧ Daftar Kriteria</div>
+    <div class="tbl-wrap"><table><thead><tr><th>Kode</th><th>Nama Kriteria</th><th>Deskripsi</th><th>Tipe</th><th>Prioritas</th><th>Aksi</th></tr></thead><tbody id="tbl-kriteria"></tbody></table></div>
+  </div>
+</div>
+
+<!-- ALTERNATIF -->
+<div class="page" id="page-alternatif">
+  <div class="breadcrumb"><span>SPK</span> › Manajemen Alternatif</div>
+  <div class="page-header"><h2>Manajemen Alternatif Provider</h2><p>Kelola daftar cloud provider yang akan dibandingkan dalam analisis AHP.</p></div>
+  <div class="card">
+    <div class="card-title">⊕ Tambah Provider Baru</div>
+    <div class="form-grid">
+      <div class="form-group"><label>Kode Alternatif</label><input id="a-kode" placeholder="contoh: A5" maxlength="5"></div>
+      <div class="form-group"><label>Nama Provider</label><input id="a-nama" placeholder="contoh: OCI (Oracle Cloud)"></div>
+      <div class="form-group"><label>Region Utama</label><input id="a-region" placeholder="contoh: ap-singapore-1"></div>
+      <div class="form-group"><label>Kategori</label><select id="a-kat"><option value="lokal">Cloud Lokal Indonesia</option><option value="global">Cloud Global Hyperscaler</option><option value="hybrid">Hybrid / Multi-cloud</option></select></div>
+      <div class="form-group full"><label>Kelebihan Utama</label><textarea id="a-plus" placeholder="Tuliskan 2–3 kelebihan utama provider ini..."></textarea></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="tambahAlternatif()">⊕ Tambah Provider</button>
+      <button class="btn btn-ghost" onclick="resetAlternatif()">↺ Reset ke Default</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">◫ Daftar Provider</div>
+    <div class="tbl-wrap"><table><thead><tr><th>Kode</th><th>Provider</th><th>Region</th><th>Kategori</th><th>Kelebihan</th><th>Aksi</th></tr></thead><tbody id="tbl-alternatif"></tbody></table></div>
+  </div>
+</div>
+
+<!-- MATRIKS -->
+<div class="page" id="page-matriks">
+  <div class="breadcrumb"><span>SPK</span> › Input Matriks</div>
+  <div class="page-header">
+    <h2>Input Matriks Perbandingan Berpasangan</h2>
+    <p>Isi nilai perbandingan menggunakan skala Saaty. Hanya isi segitiga <strong>atas kanan</strong> — bagian bawah otomatis diisi sebagai nilai resiprokal (1/nilai).</p>
+  </div>
+  <div class="saaty-ref">
+    <div style="font-size:11px;font-weight:600;color:var(--text);margin-bottom:8px">📏 Panduan Skala Saaty</div>
+    <div class="saaty-grid">
+      <span class="saaty-num">1</span><span class="saaty-desc">Sama pentingnya</span>
+      <span class="saaty-num">3</span><span class="saaty-desc">Sedikit lebih penting</span>
+      <span class="saaty-num">5</span><span class="saaty-desc">Lebih penting</span>
+      <span class="saaty-num">7</span><span class="saaty-desc">Sangat lebih penting</span>
+      <span class="saaty-num">9</span><span class="saaty-desc">Mutlak lebih penting</span>
+      <span class="saaty-num">2,4,6,8</span><span class="saaty-desc">Nilai kompromi antara dua tingkat</span>
+    </div>
+  </div>
+  <div class="tabs" id="matrix-tabs"></div>
+  <div id="matrix-content"></div>
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="simpanMatriks()">💾 Simpan Semua Matriks</button>
+    <button class="btn btn-ghost" onclick="isiDefaultMatriks()">↺ Muat Nilai Default</button>
+    <button class="btn btn-ghost" onclick="navigate('hitung')">⊛ Lanjut ke Perhitungan →</button>
+  </div>
+</div>
+
+<!-- HITUNG -->
+<div class="page" id="page-hitung">
+  <div class="breadcrumb"><span>SPK</span> › Perhitungan AHP</div>
+  <div class="page-header">
+    <h2>Proses Perhitungan AHP</h2>
+    <p>Detail langkah demi langkah: normalisasi matriks, eigen vector (bobot prioritas), lambda max, CI, dan Consistency Ratio (CR).</p>
+  </div>
+  <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:20px;font-family:var(--mono);font-size:12px;color:var(--muted);line-height:2.1">
+    <div style="color:var(--text);font-weight:600;margin-bottom:4px">Formula AHP (Saaty, 1980)</div>
+    <div>① Normalisasi: a_norm[i][j] = a[i][j] / Σ(kolom_j)</div>
+    <div>② Bobot: w[i] = rata-rata baris dari matriks ternormalisasi</div>
+    <div>③ λ_max = rata-rata dari (A·w)[i] / w[i] untuk semua i</div>
+    <div>④ CI = (λ_max − n) / (n − 1)</div>
+    <div>⑤ CR = CI / RI[n] &nbsp;→&nbsp; CR &lt; 0.10 = <span class="cr-good">KONSISTEN ✓</span></div>
+  </div>
+  <div class="btn-row" style="margin-top:0;margin-bottom:20px">
+    <button class="btn btn-success" onclick="jalankanAHP()">▶ Jalankan Perhitungan AHP</button>
+    <button class="btn btn-ghost" onclick="navigate('hasil')">◉ Langsung ke Hasil →</button>
+  </div>
+  <div id="calc-output"></div>
+</div>
+
+<!-- HASIL -->
+<div class="page" id="page-hasil">
+  <div class="breadcrumb"><span>SPK</span> › Hasil & Rekomendasi</div>
+  <div class="page-header"><h2>Hasil Analisis & Rekomendasi</h2><p>Peringkat akhir provider cloud berdasarkan skor AHP gabungan semua kriteria dan alternatif.</p></div>
+  <div id="hasil-output"></div>
+</div>
+
+<!-- RIWAYAT -->
+<div class="page" id="page-riwayat">
+  <div class="breadcrumb"><span>SPK</span> › Riwayat Keputusan</div>
+  <div class="page-header"><h2>Riwayat Keputusan</h2><p>Log semua analisis AHP yang pernah dijalankan dan disimpan ke database.</p></div>
+  <div class="card">
+    <div class="card-title">◷ Log Analisis</div>
+    <div class="tbl-wrap"><table><thead><tr><th>#</th><th>Waktu</th><th>Skenario</th><th>Rekomendasi</th><th>Skor</th><th>CR</th><th>Aksi</th></tr></thead><tbody id="tbl-riwayat"></tbody></table></div>
+    <div class="btn-row"><button class="btn btn-danger" onclick="hapusRiwayat()">🗑 Hapus Semua Riwayat</button></div>
+  </div>
+</div>
+
+<!-- TENTANG -->
+<div class="page" id="page-tentang">
+  <div class="breadcrumb"><span>SPK</span> › Tentang</div>
+  <div class="page-header"><h2>Tentang Sistem SPK-AHP</h2></div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">📋 Informasi Tugas</div>
+      <table style="font-size:13px">
+        <tr><td style="color:var(--muted);padding:7px 0;border:none;width:140px">Mata Kuliah</td><td style="padding:7px 12px;border:none;font-weight:600">Sistem Pendukung Keputusan</td></tr>
+        <tr><td style="color:var(--muted);padding:7px 0;border:none">Topik</td><td style="padding:7px 12px;border:none">AHP — Pemilihan Cloud Provider</td></tr>
+        <tr><td style="color:var(--muted);padding:7px 0;border:none">Metode</td><td style="padding:7px 12px;border:none">Analytic Hierarchy Process (Saaty, 1980)</td></tr>
+        <tr><td style="color:var(--muted);padding:7px 0;border:none">Teknologi</td><td style="padding:7px 12px;border:none">HTML · CSS · JavaScript (Vanilla)</td></tr>
+        <tr><td style="color:var(--muted);padding:7px 0;border:none">Database</td><td style="padding:7px 12px;border:none">localStorage (browser-based, tidak perlu server)</td></tr>
+        <tr><td style="color:var(--muted);padding:7px 0;border:none">Studi Kasus</td><td style="padding:7px 12px;border:none">UU PDP + Era Tech Winter Indonesia</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-title">⚡ Fitur Sistem</div>
+      <div style="display:flex;flex-direction:column;gap:9px;font-size:13px">
+        <div style="display:flex;gap:8px"><span style="color:var(--green);flex-shrink:0">✓</span><span>Manajemen kriteria dan alternatif dengan CRUD penuh</span></div>
+        <div style="display:flex;gap:8px"><span style="color:var(--green);flex-shrink:0">✓</span><span>Input matriks interaktif — resiprokal otomatis live update</span></div>
+        <div style="display:flex;gap:8px"><span style="color:var(--green);flex-shrink:0">✓</span><span>Perhitungan AHP lengkap: normalisasi, eigen vector, λ_max, CI, CR</span></div>
+        <div style="display:flex;gap:8px"><span style="color:var(--green);flex-shrink:0">✓</span><span>Validasi Consistency Ratio (CR &lt; 0.10 = konsisten)</span></div>
+        <div style="display:flex;gap:8px"><span style="color:var(--green);flex-shrink:0">✓</span><span>Visualisasi skor dengan bar chart per alternatif dan kriteria</span></div>
+        <div style="display:flex;gap:8px"><span style="color:var(--green);flex-shrink:0">✓</span><span>Penyimpanan riwayat keputusan di localStorage browser</span></div>
+        <div style="display:flex;gap:8px"><span style="color:var(--green);flex-shrink:0">✓</span><span>Cetak laporan hasil melalui browser print (Ctrl+P)</span></div>
+        <div style="display:flex;gap:8px"><span style="color:var(--green);flex-shrink:0">✓</span><span>Berjalan 100% di browser — tidak butuh server/backend</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">📐 Tabel Random Index (RI) Saaty</div>
+    <div class="tbl-wrap">
+      <table style="font-family:var(--mono);font-size:13px">
+        <thead><tr><th>n</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th></tr></thead>
+        <tbody><tr><td style="color:var(--muted)">RI</td><td>0.00</td><td>0.00</td><td>0.58</td><td>0.90</td><td>1.12</td><td>1.24</td><td>1.32</td><td>1.41</td><td>1.45</td><td>1.49</td></tr></tbody>
+      </table>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-top:8px">CR = CI / RI. Jika CR &lt; 0.10 maka matriks perbandingan dinyatakan konsisten dan dapat digunakan sebagai dasar keputusan.</div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-riwayat">
+  <div class="modal">
+    <div class="modal-title">Detail Analisis</div>
+    <div class="modal-sub" id="modal-riwayat-time"></div>
+    <div id="modal-riwayat-body"></div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-riwayat')">Tutup</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><div class="toast-dot" id="toast-dot"></div><span id="toast-msg"></span></div>
+
+<script>
+// ══════════════════════════════════════════
+// DATABASE LAYER
+// ══════════════════════════════════════════
+const DB={
+  get:k=>{try{return JSON.parse(localStorage.getItem('ahp_'+k))}catch{return null}},
+  set:(k,v)=>localStorage.setItem('ahp_'+k,JSON.stringify(v)),
+  push:(k,v)=>{const a=DB.get(k)||[];a.push(v);DB.set(k,a)},
+};
+
+// ══════════════════════════════════════════
+// DEFAULT DATA
+// ══════════════════════════════════════════
+const DK=[
+  {kode:'C1',nama:'Kepatuhan UU PDP',desc:'Kemampuan memenuhi UU No.27/2022: lokalisasi data WNI di Indonesia, audit trail, enkripsi data sensitif.',tipe:'benefit',prioritas:'very_high'},
+  {kode:'C2',nama:'Efisiensi Biaya',desc:'Total Cost of Ownership era Tech Winter: compute, storage, egress, lisensi, dan biaya tim DevOps.',tipe:'cost',prioritas:'high'},
+  {kode:'C3',nama:'Skalabilitas & Performa',desc:'Kemampuan auto-scale, latency rendah, uptime SLA tinggi, CDN dan distribusi global.',tipe:'benefit',prioritas:'medium'},
+  {kode:'C4',nama:'Ekosistem AI/ML',desc:'Managed ML services, GPU compute, integrasi LLM API, pipeline MLOps siap pakai.',tipe:'benefit',prioritas:'medium'},
+  {kode:'C5',nama:'Dukungan Teknis Lokal',desc:'Tim support berbahasa Indonesia, partner lokal, SLA response time, dokumentasi lokal.',tipe:'benefit',prioritas:'high'},
+];
+const DA=[
+  {kode:'A1',nama:'Cloud Lokal (IDCloudHost/Biznet)',region:'Jakarta, Indonesia',kat:'lokal',plus:'Data center fisik di Indonesia; Pricing IDR; Dukungan lokal 24/7'},
+  {kode:'A2',nama:'AWS (Amazon Web Services)',region:'ap-southeast-3 Jakarta',kat:'global',plus:'500+ managed services; SageMaker & Bedrock; 99.99% SLA'},
+  {kode:'A3',nama:'GCP (Google Cloud Platform)',region:'asia-southeast2 Jakarta',kat:'global',plus:'Vertex AI & Gemini; BigQuery; GKE Autopilot'},
+  {kode:'A4',nama:'Azure (Microsoft)',region:'Southeast Asia (Singapore)',kat:'global',plus:'Azure OpenAI native; Active Directory SSO; Hybrid cloud'},
+];
+const DCM=[[1,2,4,5,3],[1/2,1,3,4,2],[1/4,1/3,1,2,1/2],[1/5,1/4,1/2,1,1/3],[1/3,1/2,2,3,1]];
+const DAM={
+  C1:[[1,5,4,4],[1/5,1,1/2,1/2],[1/4,2,1,1],[1/4,2,1,1]],
+  C2:[[1,3,2,3],[1/3,1,1/2,1],[1/2,2,1,2],[1/3,1,1/2,1]],
+  C3:[[1,1/5,1/4,1/5],[5,1,2,1],[4,1/2,1,1/2],[5,1,2,1]],
+  C4:[[1,1/7,1/5,1/6],[7,1,2,3],[5,1/2,1,2],[6,1/3,1/2,1]],
+  C5:[[1,4,3,3],[1/4,1,1/2,1/2],[1/3,2,1,1],[1/3,2,1,1]],
+};
+const RI={1:0,2:0,3:.58,4:.90,5:1.12,6:1.24,7:1.32,8:1.41,9:1.45,10:1.49};
+const CC=['#4f8ef7','#10b981','#f59e0b','#ef4444','#a78bfa','#fb7185','#34d399'];
+
+function initDB(){
+  if(!DB.get('kriteria'))    DB.set('kriteria',   DK);
+  if(!DB.get('alternatif'))  DB.set('alternatif', DA);
+  if(!DB.get('crit_matrix')) DB.set('crit_matrix',DCM);
+  if(!DB.get('alt_matrices'))DB.set('alt_matrices',DAM);
+  if(!DB.get('riwayat'))     DB.set('riwayat',[]);
+}
+
+// ══════════════════════════════════════════
+// AHP ENGINE
+// ══════════════════════════════════════════
+function ahpW(matrix){
+  const n=matrix.length;
+  const cs=Array(n).fill(0);
+  for(let i=0;i<n;i++)for(let j=0;j<n;j++)cs[j]+=matrix[i][j];
+  const norm=matrix.map(r=>r.map((v,j)=>v/cs[j]));
+  const w=norm.map(r=>r.reduce((s,v)=>s+v,0)/n);
+  const lm=matrix.reduce((acc,r,i)=>{const Aw=r.reduce((s,v,j)=>s+v*w[j],0);return acc+Aw/w[i]},0)/n;
+  const CI=(lm-n)/(n-1);
+  const ri=RI[n]??1.49;
+  const CR=ri>0?CI/ri:0;
+  return{w,lm,CI,CR,ok:CR<0.10,cs,norm};
+}
+
+function evaluate(){
+  const k=DB.get('kriteria')||[],a=DB.get('alternatif')||[];
+  const cm=DB.get('crit_matrix')||[],am=DB.get('alt_matrices')||{};
+  const cr=ahpW(cm);
+  const ar={},aw=[];
+  k.forEach((ki,i)=>{
+    const m=am[ki.kode]||Array.from({length:a.length},(_,r)=>Array.from({length:a.length},(_,c)=>r===c?1:1));
+    const res=ahpW(m);aw.push(res.w);ar[ki.kode]=res;
+  });
+  const fs=a.map((_,j)=>cr.w.reduce((s,cw,i)=>s+cw*(aw[i]?.[j]??0),0));
+  const wi=fs.indexOf(Math.max(...fs));
+  return{k,a,cr,ar,aw,fs,wi,winner:a[wi]};
+}
+
+// ══════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════
+let curPage='dashboard',tabIdx=0;
+
+function navigate(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.page===page));
+  document.getElementById('page-'+page).classList.add('active');
+  curPage=page;
+  ({dashboard:renderDashboard,kriteria:renderKriteria,alternatif:renderAlternatif,
+    matriks:()=>{tabIdx=0;renderMatriks();},hasil:renderHasil,riwayat:renderRiwayat})[page]?.();
+}
+
+// ══════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════
+function toast(msg,type='success'){
+  document.getElementById('toast-dot').style.background=type==='success'?'#10b981':type==='warn'?'#f59e0b':'#ef4444';
+  document.getElementById('toast-msg').textContent=msg;
+  const el=document.getElementById('toast');
+  el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2800);
+}
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+
+function fv(v){
+  if(Math.abs(v-1)<.0001)return'1';
+  const fr=[[1/9,'1/9'],[1/8,'1/8'],[1/7,'1/7'],[1/6,'1/6'],[1/5,'1/5'],[1/4,'1/4'],[1/3,'1/3'],[1/2,'1/2']];
+  for(const[f,s]of fr){if(Math.abs(v-f)<.0001)return s;if(Math.abs(v-1/f)<.0001&&v>1)return String(Math.round(1/f));}
+  return v%1===0?String(v):v.toFixed(3);
+}
+
+// ══════════════════════════════════════════
+// RENDER DASHBOARD
+// ══════════════════════════════════════════
+function renderDashboard(){
+  const k=DB.get('kriteria')||[],a=DB.get('alternatif')||[],r=DB.get('riwayat')||[];
+  document.getElementById('stat-kriteria').textContent=k.length;
+  document.getElementById('stat-alternatif').textContent=a.length;
+  document.getElementById('stat-analisis').textContent=r.length;
+  const pc={very_high:'red',high:'amber',medium:'blue',low:'blue'};
+  const pl={very_high:'Sangat Tinggi',high:'Tinggi',medium:'Sedang',low:'Rendah'};
+  document.getElementById('dash-kriteria-list').innerHTML=k.length
+    ?k.map(x=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(42,53,88,.4);font-size:13px">
+      <span class="tag">${x.kode}</span><span style="flex:1">${x.nama}</span>
+      <span class="badge badge-${pc[x.prioritas]}">${pl[x.prioritas]}</span></div>`).join('')
+    :'<div class="empty-state">Belum ada kriteria</div>';
+  const ac={lokal:'green',global:'blue',hybrid:'purple'};
+  document.getElementById('dash-alt-list').innerHTML=a.length
+    ?a.map(x=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(42,53,88,.4);font-size:13px">
+      <span class="tag">${x.kode}</span>
+      <div style="flex:1"><div>${x.nama}</div><div style="font-size:11px;color:var(--muted)">${x.region}</div></div>
+      <span class="badge badge-${ac[x.kat]}">${x.kat}</span></div>`).join('')
+    :'<div class="empty-state">Belum ada alternatif</div>';
+  if(r.length>0){
+    const last=r[r.length-1];
+    document.getElementById('stat-status').innerHTML='<span style="color:var(--green)">✓ Selesai</span>';
+    document.getElementById('stat-cr').textContent='CR = '+(last.cr?.toFixed(4)??'—');
+    document.getElementById('dash-result').innerHTML=`
+      <div class="result-hero">
+        <div class="result-icon">🏆</div>
+        <div style="flex:1">
+          <div class="result-badge">Rekomendasi Terakhir · ${last.waktu}</div>
+          <div class="result-name">${last.rekomendasi}</div>
+          <div class="result-sub">Skor AHP: <strong style="color:var(--accent)">${(last.skor*100).toFixed(2)}%</strong> &nbsp;·&nbsp; CR = ${last.cr?.toFixed(4)}</div>
+        </div>
+        <div class="result-score"><div class="result-score-val">${(last.skor*100).toFixed(1)}%</div><div class="result-score-label">Skor AHP</div></div>
+      </div>`;
+  }else{
+    document.getElementById('stat-status').textContent='—';
+    document.getElementById('stat-cr').textContent='Belum ada analisis';
+    document.getElementById('dash-result').innerHTML='<div class="alert alert-warn">⚠️ Belum ada analisis. Lengkapi matriks lalu jalankan perhitungan AHP.</div>';
+  }
+}
+
+// ══════════════════════════════════════════
+// RENDER KRITERIA
+// ══════════════════════════════════════════
+function renderKriteria(){
+  const k=DB.get('kriteria')||[];
+  const pc={very_high:'red',high:'amber',medium:'blue',low:'blue'};
+  const pl={very_high:'Sangat Tinggi',high:'Tinggi',medium:'Sedang',low:'Rendah'};
+  document.getElementById('tbl-kriteria').innerHTML=k.length
+    ?k.map((x,i)=>`<tr>
+      <td><span class="mono">${x.kode}</span></td>
+      <td><strong>${x.nama}</strong></td>
+      <td style="color:var(--muted);max-width:260px;font-size:12px">${x.desc}</td>
+      <td><span class="badge badge-${x.tipe==='benefit'?'green':'red'}">${x.tipe}</span></td>
+      <td><span class="badge badge-${pc[x.prioritas]}">${pl[x.prioritas]}</span></td>
+      <td><button class="btn btn-danger" style="padding:5px 10px;font-size:11px" onclick="hapusKriteria(${i})">✕</button></td>
+      </tr>`).join('')
+    :'<tr><td colspan="6"><div class="empty-state">Belum ada kriteria</div></td></tr>';
+}
+
+// ══════════════════════════════════════════
+// RENDER ALTERNATIF
+// ══════════════════════════════════════════
+function renderAlternatif(){
+  const a=DB.get('alternatif')||[];
+  const ac={lokal:'green',global:'blue',hybrid:'purple'};
+  document.getElementById('tbl-alternatif').innerHTML=a.length
+    ?a.map((x,i)=>`<tr>
+      <td><span class="mono">${x.kode}</span></td>
+      <td><strong>${x.nama}</strong></td>
+      <td><span class="mono" style="font-size:11px">${x.region}</span></td>
+      <td><span class="badge badge-${ac[x.kat]}">${x.kat}</span></td>
+      <td style="color:var(--muted);max-width:240px;font-size:12px">${x.plus}</td>
+      <td><button class="btn btn-danger" style="padding:5px 10px;font-size:11px" onclick="hapusAlternatif(${i})">✕</button></td>
+      </tr>`).join('')
+    :'<tr><td colspan="6"><div class="empty-state">Belum ada alternatif</div></td></tr>';
+}
+
+// ══════════════════════════════════════════
+// RENDER MATRIKS (live reciprocal)
+// ══════════════════════════════════════════
+const EV={};// edited values buffer
+
+function getMx(id){
+  if(EV[id])return EV[id];
+  if(id==='crit')return JSON.parse(JSON.stringify(DB.get('crit_matrix')||[]));
+  const kode=id.replace(/^alt_/,'');
+  return JSON.parse(JSON.stringify((DB.get('alt_matrices')||{})[kode]||[]));
+}
+
+function setCell(id,i,j,raw){
+  const v=parseFloat(raw);if(isNaN(v)||v<=0)return;
+  if(!EV[id])EV[id]=getMx(id);
+  const m=EV[id];
+  while(m.length<=Math.max(i,j))m.push([]);
+  while(m[i].length<=j)m[i].push(1);
+  while(m[j].length<=i)m[j].push(1);
+  m[i][j]=v;m[j][i]=1/v;
+  // live update reciprocal display
+  const el=document.getElementById('rc_'+id+'_'+j+'_'+i);
+  if(el)el.textContent=fv(1/v);
+}
+
+function renderMatriks(){
+  const k=DB.get('kriteria')||[],a=DB.get('alternatif')||[];
+  const tabs=[{id:'crit',label:'Kriteria',sub:'antar kriteria'},...k.map(x=>({id:'alt_'+x.kode,label:'Alt:'+x.kode,sub:x.nama}))];
+  document.getElementById('matrix-tabs').innerHTML=tabs.map((t,i)=>
+    `<div class="tab ${i===tabIdx?'active':''}" onclick="switchTab(${i})">${t.label}</div>`).join('');
+  const cur=tabs[tabIdx];
+  let labels,matrix;
+  if(cur.id==='crit'){labels=k.map(x=>x.nama);matrix=getMx('crit');}
+  else{const kode=cur.id.replace('alt_','');labels=a.map(x=>x.nama);matrix=getMx(cur.id);}
+  if(labels.length<2){
+    document.getElementById('matrix-content').innerHTML='<div class="alert alert-warn">⚠️ Butuh minimal 2 item.</div>';return;
+  }
+  const n=labels.length;
+  while(matrix.length<n)matrix.push([]);
+  for(let i=0;i<n;i++){while(matrix[i].length<n)matrix[i].push(i===matrix[i].length?1:1);matrix[i][i]=1;}
+  const hdr=labels.map(l=>`<th title="${l}">${l.length>13?l.slice(0,12)+'…':l}</th>`).join('');
+  let rows='';
+  for(let i=0;i<n;i++){
+    rows+=`<tr><th style="text-align:left;font-size:11px;max-width:150px" title="${labels[i]}">${labels[i].length>17?labels[i].slice(0,16)+'…':labels[i]}</th>`;
+    for(let j=0;j<n;j++){
+      const v=matrix[i]?.[j]??1;
+      if(i===j)rows+=`<td class="diag">1</td>`;
+      else if(i>j)rows+=`<td class="recip" id="rc_${cur.id}_${i}_${j}">${fv(v)}</td>`;
+      else rows+=`<td><input type="number" min="0.111" max="9" step="0.01" value="${parseFloat(v.toFixed(4))}"
+        oninput="setCell('${cur.id}',${i},${j},this.value)"
+        title="${labels[i]} vs ${labels[j]}"></td>`;
+    }
+    rows+='</tr>';
+  }
+  document.getElementById('matrix-content').innerHTML=`
+    <div class="card">
+      <div class="card-title">Matriks ${n}×${n} — ${cur.sub}</div>
+      <div class="alert alert-info" style="font-size:12px">📌 Isi sel <strong>putih (segitiga atas)</strong>. Sel <em>abu-abu miring</em> = resiprokal otomatis. Sel biru diagonal = 1 (sama dengan diri sendiri).</div>
+      <div class="matrix-wrap"><table class="matrix-tbl"><thead><tr><th style="min-width:150px"></th>${hdr}</tr></thead><tbody>${rows}</tbody></table></div>
+    </div>`;
+}
+
+function switchTab(i){tabIdx=i;renderMatriks()}
+
+function simpanMatriks(){
+  const k=DB.get('kriteria')||[];
+  if(EV['crit'])DB.set('crit_matrix',EV['crit']);
+  const am=DB.get('alt_matrices')||{};
+  k.forEach(x=>{const id='alt_'+x.kode;if(EV[id])am[x.kode]=EV[id];});
+  DB.set('alt_matrices',am);
+  Object.keys(EV).forEach(k=>delete EV[k]);
+  toast('Semua matriks berhasil disimpan!');
+  renderMatriks();
+}
+
+function isiDefaultMatriks(){
+  if(!confirm('Timpa semua matriks dengan nilai default?'))return;
+  DB.set('crit_matrix',DCM);DB.set('alt_matrices',DAM);
+  Object.keys(EV).forEach(k=>delete EV[k]);
+  toast('Nilai default berhasil dimuat!');renderMatriks();
+}
+
+// ══════════════════════════════════════════
+// PERHITUNGAN AHP (step-by-step)
+// ══════════════════════════════════════════
+function jalankanAHP(){
+  const k=DB.get('kriteria')||[],a=DB.get('alternatif')||[];
+  if(k.length<2||a.length<2){
+    document.getElementById('calc-output').innerHTML='<div class="alert alert-warn">⚠️ Butuh minimal 2 kriteria dan 2 alternatif.</div>';return;
+  }
+  const res=evaluate();
+  const cm=DB.get('crit_matrix')||[],am=DB.get('alt_matrices')||{};
+  const nc=k.length,na=a.length;
+  let html='';
+
+  // STEP 1
+  const ch=k.map(x=>`<th>${x.kode}</th>`).join('');
+  let cr1='',cr2='';
+  for(let i=0;i<nc;i++){
+    cr1+=`<tr><th style="text-align:left;font-size:11px">${k[i].kode}: ${k[i].nama.length>14?k[i].nama.slice(0,13)+'…':k[i].nama}</th>`;
+    cr2+=`<tr><th style="text-align:left;font-size:11px">${k[i].kode}</th>`;
+    for(let j=0;j<nc;j++){
+      cr1+=`<td class="${i===j?'diag':''}">${fv(cm[i]?.[j]??1)}</td>`;
+      cr2+=`<td>${res.cr.norm[i]?.[j]?.toFixed(4)??'—'}</td>`;
+    }
+    cr1+=`</tr>`;cr2+=`<td style="font-weight:700;color:var(--accent)">${res.cr.w[i].toFixed(4)}</td></tr>`;
+  }
+  html+=`<div class="card"><div class="card-title">⊛ Step 1 — Matriks Perbandingan Kriteria</div>
+    <div class="two-col">
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">A. Matriks Perbandingan Berpasangan</div>
+        <div class="matrix-wrap"><table class="matrix-tbl" style="font-size:11px"><thead><tr><th></th>${ch}</tr></thead><tbody>${cr1}</tbody></table></div>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">B. Ternormalisasi + Bobot (Eigen Vector)</div>
+        <div class="matrix-wrap"><table class="matrix-tbl" style="font-size:11px"><thead><tr><th></th>${ch}<th style="color:var(--accent)">Bobot</th></tr></thead><tbody>${cr2}</tbody></table></div>
+        <div style="margin-top:12px;padding:12px;background:var(--bg3);border-radius:8px;font-family:var(--mono);font-size:12px;border:1px solid var(--border);line-height:2">
+          <div>Jml kolom: [${res.cr.cs.map(v=>v.toFixed(3)).join(', ')}]</div>
+          <div>λ_max = <strong style="color:var(--accent)">${res.cr.lm.toFixed(4)}</strong></div>
+          <div>CI = (${res.cr.lm.toFixed(4)} − ${nc}) / (${nc}−1) = <strong>${res.cr.CI.toFixed(4)}</strong></div>
+          <div>RI[${nc}] = ${RI[nc]??'—'} &nbsp;→&nbsp; CR = <strong class="${res.cr.ok?'cr-good':'cr-bad'}">${res.cr.CR.toFixed(4)}</strong>
+            <span class="badge badge-${res.cr.ok?'green':'red'}" style="margin-left:8px">${res.cr.ok?'KONSISTEN ✓':'TIDAK KONSISTEN ✗'}</span>
+          </div>
+        </div>
+      </div>
+    </div></div>`;
+
+  // STEP 2
+  html+=`<div class="card"><div class="card-title">⊛ Step 2 — Bobot Alternatif per Kriteria</div>`;
+  k.forEach((ki,ci)=>{
+    const ar=res.ar[ki.kode],m=am[ki.kode]||[];
+    const ah=a.map(x=>`<th>${x.kode}</th>`).join('');
+    let ar1='',ar2='';
+    for(let i=0;i<na;i++){
+      ar1+=`<tr><th style="text-align:left;font-size:11px">${a[i].kode}</th>`;
+      ar2+=`<tr><th style="text-align:left;font-size:11px">${a[i].kode}</th>`;
+      for(let j=0;j<na;j++){
+        ar1+=`<td class="${i===j?'diag':''}">${fv(m[i]?.[j]??1)}</td>`;
+        ar2+=`<td>${ar.norm[i]?.[j]?.toFixed(4)??'—'}</td>`;
+      }
+      ar1+=`</tr>`;ar2+=`<td style="font-weight:700;color:var(--accent)">${ar.w[i].toFixed(4)}</td></tr>`;
+    }
+    html+=`<div style="margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border)">
+      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:8px">
+        <span class="tag">${ki.kode}</span> ${ki.nama}
+        <span class="badge badge-${ar.ok?'green':'red'}" style="margin-left:4px">CR=${ar.CR.toFixed(4)} ${ar.ok?'✓':'✗'}</span>
+      </div>
+      <div class="two-col">
+        <div><div style="font-size:11px;color:var(--muted);margin-bottom:6px">Matriks Perbandingan</div>
+          <div class="matrix-wrap"><table class="matrix-tbl" style="font-size:11px"><thead><tr><th></th>${ah}</tr></thead><tbody>${ar1}</tbody></table></div></div>
+        <div><div style="font-size:11px;color:var(--muted);margin-bottom:6px">Ternormalisasi + Bobot</div>
+          <div class="matrix-wrap"><table class="matrix-tbl" style="font-size:11px"><thead><tr><th></th>${ah}<th style="color:var(--accent)">w</th></tr></thead><tbody>${ar2}</tbody></table></div>
+          <div style="font-size:11px;font-family:var(--mono);margin-top:6px;color:var(--muted)">λ_max=${ar.lm.toFixed(4)} | CI=${ar.CI.toFixed(4)} | RI=${RI[na]}</div>
+        </div>
+      </div>
+    </div>`;
+  });
+  html+=`</div>`;
+
+  // STEP 3
+  const sorted=[...res.a.map((al,i)=>({al,s:res.fs[i],i}))].sort((x,y)=>y.s-x.s);
+  let sr='';
+  sorted.forEach((item,rank)=>{
+    const parts=k.map((_,ci)=>{const p=res.cr.w[ci]*(res.aw[ci]?.[item.i]??0);
+      return`<td class="mono" style="font-size:11px">${res.cr.w[ci].toFixed(3)}×${(res.aw[ci]?.[item.i]??0).toFixed(3)}<br><span style="color:var(--muted);font-size:10px">=${p.toFixed(4)}</span></td>`;}).join('');
+    const bl=['<span class="badge badge-amber">🥇 Terpilih</span>','<span class="badge badge-blue">#2 Runner-up</span>'];
+    sr+=`<tr style="${rank===0?'background:rgba(79,142,247,.06)':''}">
+      <td style="font-family:var(--mono);font-weight:700;color:${rank===0?'var(--amber)':'var(--muted)'}">#${rank+1}</td>
+      <td><div style="font-weight:600;font-size:13px">${item.al.nama}</div><div style="font-size:11px;color:var(--muted)">${item.al.region}</div></td>
+      ${parts}
+      <td class="mono" style="font-weight:700;font-size:15px;color:${rank===0?'var(--accent)':'var(--text)'}">${(item.s*100).toFixed(2)}%</td>
+      <td>${bl[rank]??'<span class="badge">#'+(rank+1)+'</span>'}</td></tr>`;
+  });
+  html+=`<div class="card"><div class="card-title">⊛ Step 3 — Skor Akhir</div>
+    <div class="alert alert-info" style="font-size:12px">Skor[j] = Σ <strong>w_kriteria[i]</strong> × <strong>w_alternatif[i][j]</strong></div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>#</th><th>Provider</th>
+        ${k.map((ki,ci)=>`<th>${ki.kode}<br><span style="font-size:10px;color:var(--accent);font-family:var(--mono);text-transform:none;letter-spacing:0">${(res.cr.w[ci]*100).toFixed(1)}%</span></th>`).join('')}
+        <th>Skor Akhir</th><th>Status</th></tr></thead>
+      <tbody>${sr}</tbody>
+    </table></div>
+    <div class="btn-row">
+      <button class="btn btn-success" onclick="simpanHasil()">💾 Simpan ke Riwayat</button>
+      <button class="btn btn-primary" onclick="navigate('hasil')">◉ Lihat Rekomendasi →</button>
+    </div></div>`;
+
+  document.getElementById('calc-output').innerHTML=html;
+}
+
+function simpanHasil(){
+  const res=evaluate();
+  DB.push('riwayat',{
+    waktu:new Date().toLocaleString('id-ID'),
+    rekomendasi:res.winner?.nama??'—',
+    skor:Math.max(...res.fs),cr:res.cr.CR,
+    scores:Object.fromEntries(res.a.map((a,i)=>[a.nama,res.fs[i]])),
+  });
+  toast('Hasil berhasil disimpan ke riwayat!');renderDashboard();
+}
+
+// ══════════════════════════════════════════
+// RENDER HASIL
+// ══════════════════════════════════════════
+function renderHasil(){
+  const k=DB.get('kriteria')||[],a=DB.get('alternatif')||[];
+  if(k.length<2||a.length<2){
+    document.getElementById('hasil-output').innerHTML='<div class="alert alert-warn">⚠️ Lengkapi minimal 2 kriteria, 2 alternatif, dan simpan matriks terlebih dahulu.</div>';return;
+  }
+  const res=evaluate();
+  const mx=Math.max(...res.fs);
+  const sorted=[...res.a.map((al,i)=>({al,s:res.fs[i],i}))].sort((x,y)=>y.s-x.s);
+  let html=`<div class="result-hero">
+    <div class="result-icon">🏆</div>
+    <div style="flex:1">
+      <div class="result-badge">Rekomendasi AHP Terbaik</div>
+      <div class="result-name">${res.winner?.nama}</div>
+      <div class="result-sub">${res.winner?.region} &nbsp;·&nbsp; Kategori: ${res.winner?.kat} &nbsp;·&nbsp; CR = ${res.cr.CR.toFixed(4)} ${res.cr.ok?'✓':'✗'}</div>
+    </div>
+    <div class="result-score"><div class="result-score-val">${(mx*100).toFixed(1)}%</div><div class="result-score-label">Skor AHP</div></div>
+  </div>`;
+
+  html+=`<div class="two-col">
+    <div class="card"><div class="card-title">◉ Peringkat Provider</div><div class="bar-chart">
+      ${sorted.map((item,r)=>`<div class="bar-item">
+        <div class="bar-meta"><span class="bar-name">${r===0?'🥇 ':''}${item.al.nama}</span><span class="bar-val">${(item.s*100).toFixed(2)}%</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:${(item.s/mx*100).toFixed(1)}%;background:${CC[r]}"></div></div>
+      </div>`).join('')}
+    </div></div>
+    <div class="card"><div class="card-title">◧ Bobot Kriteria</div><div class="bar-chart">
+      ${res.k.map((ki,i)=>`<div class="bar-item">
+        <div class="bar-meta"><span class="bar-name">${ki.kode}: ${ki.nama}</span><span class="bar-val">${(res.cr.w[i]*100).toFixed(1)}%</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:${(res.cr.w[i]/Math.max(...res.cr.w)*100).toFixed(1)}%;background:var(--accent)"></div></div>
+      </div>`).join('')}
+    </div>
+    <div style="margin-top:12px;padding:10px;background:var(--bg3);border-radius:8px;font-size:12px;border:1px solid var(--border);font-family:var(--mono)">
+      CR = ${res.cr.CR.toFixed(4)} <span class="${res.cr.ok?'cr-good':'cr-bad'}">${res.cr.ok?'(KONSISTEN ✓ — CR < 0.10)':'(CR ≥ 0.10 — perlu revisi)'}</span>
+    </div></div>
+  </div>`;
+
+  html+=`<div class="card"><div class="card-title">⊞ Tabel Keputusan Lengkap</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>#</th><th>Provider Cloud</th>
+        ${res.k.map((ki,ci)=>`<th title="${ki.nama}">${ki.kode}<br><span style="font-size:10px;text-transform:none;letter-spacing:0;color:var(--accent);font-family:var(--mono)">${(res.cr.w[ci]*100).toFixed(1)}%</span></th>`).join('')}
+        <th>Skor Akhir</th><th>Status</th></tr></thead>
+      <tbody>${sorted.map((item,rank)=>`<tr>
+        <td style="font-family:var(--mono);font-weight:700;color:${rank===0?'var(--amber)':'var(--muted)'}">#${rank+1}</td>
+        <td><div style="font-weight:600">${item.al.nama}</div><div style="font-size:11px;color:var(--muted)">${item.al.region}</div></td>
+        ${res.k.map((_,ci)=>`<td class="mono">${(res.aw[ci]?.[item.i]??0).toFixed(4)}</td>`).join('')}
+        <td class="mono" style="font-weight:700;font-size:15px;color:${rank===0?'var(--accent)':'var(--text)'}">${(item.s*100).toFixed(2)}%</td>
+        <td>${rank===0?'<span class="badge badge-amber">🥇 Terpilih</span>':rank===1?'<span class="badge badge-blue">Runner-up</span>':'<span class="badge">Alternatif</span>'}</td>
+      </tr>`).join('')}</tbody>
+    </table></div></div>`;
+
+  const ti=res.cr.w.indexOf(Math.max(...res.cr.w));
+  html+=`<div class="card"><div class="card-title">◈ Analisis & Kesimpulan</div>
+    <div style="font-size:13px;line-height:1.9;color:var(--text)">
+      <p style="margin-bottom:12px">Berdasarkan hasil analisis <strong>Analytic Hierarchy Process (AHP)</strong> dengan <strong>${res.k.length} kriteria</strong> dan <strong>${res.a.length} alternatif</strong>, sistem merekomendasikan <strong style="color:var(--accent)">${res.winner?.nama}</strong> sebagai pilihan cloud provider terbaik dengan skor akhir <strong style="color:var(--accent)">${(mx*100).toFixed(2)}%</strong>.</p>
+      <p style="margin-bottom:12px">Keputusan ini dipengaruhi terutama oleh bobot tertinggi pada kriteria <strong>${res.k[ti]?.nama??'—'}</strong> (${(Math.max(...res.cr.w)*100).toFixed(1)}%), yang mencerminkan prioritas kepatuhan regulasi <strong>UU No.27/2022 (UU PDP)</strong> dan tekanan efisiensi biaya di era <strong>Tech Winter</strong>.</p>
+      <p style="color:var(--muted)">Consistency Ratio (CR) = ${res.cr.CR.toFixed(4)} — ${res.cr.ok?'nilai ini berada di bawah threshold <strong>0.10</strong>, sehingga matriks perbandingan dinyatakan <strong style="color:var(--green)">KONSISTEN</strong> dan hasil analisis dapat dipercaya.':'nilai ini <strong style="color:var(--red)">melebihi threshold 0.10</strong>. Disarankan merevisi matriks perbandingan agar lebih konsisten.'}</p>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-success" onclick="simpanHasil()">💾 Simpan ke Riwayat</button>
+      <button class="btn btn-ghost" onclick="window.print()">🖨 Cetak Laporan</button>
+    </div></div>`;
+
+  document.getElementById('hasil-output').innerHTML=html;
+}
+
+// ══════════════════════════════════════════
+// RENDER RIWAYAT
+// ══════════════════════════════════════════
+function renderRiwayat(){
+  const r=DB.get('riwayat')||[];
+  document.getElementById('tbl-riwayat').innerHTML=r.length
+    ?r.slice().reverse().map((e,i)=>`<tr>
+      <td class="mono">${r.length-i}</td>
+      <td style="color:var(--muted);font-size:12px">${e.waktu}</td>
+      <td style="font-size:12px">Pemilihan Cloud Provider</td>
+      <td><strong style="color:var(--accent)">${e.rekomendasi}</strong></td>
+      <td class="mono">${(e.skor*100).toFixed(2)}%</td>
+      <td class="mono ${e.cr<.1?'cr-good':'cr-bad'}">${e.cr?.toFixed(4)??'—'}</td>
+      <td><button class="btn btn-ghost" style="padding:5px 10px;font-size:11px" onclick="lihatRiwayat(${r.length-1-i})">Detail</button></td>
+      </tr>`).join('')
+    :'<tr><td colspan="7"><div class="empty-state">Belum ada riwayat analisis</div></td></tr>';
+}
+
+function lihatRiwayat(idx){
+  const r=DB.get('riwayat')||[],e=r[idx];if(!e)return;
+  document.getElementById('modal-riwayat-time').textContent=e.waktu;
+  const entries=e.scores?Object.entries(e.scores).sort((a,b)=>b[1]-a[1]):[];
+  const mx=entries[0]?.[1]??1;
+  document.getElementById('modal-riwayat-body').innerHTML=`
+    <table style="font-size:13px;width:100%">
+      <tr><td style="color:var(--muted);padding:7px 0;border:none;width:140px">Rekomendasi</td><td style="font-weight:700;color:var(--accent);border:none">${e.rekomendasi}</td></tr>
+      <tr><td style="color:var(--muted);padding:7px 0;border:none">Skor Tertinggi</td><td style="font-family:var(--mono);border:none">${(e.skor*100).toFixed(2)}%</td></tr>
+      <tr><td style="color:var(--muted);padding:7px 0;border:none">CR Kriteria</td><td class="${e.cr<.1?'cr-good':'cr-bad'}" style="font-family:var(--mono);border:none">${e.cr?.toFixed(4)} ${e.cr<.1?'(Konsisten ✓)':'(Tidak Konsisten ✗)'}</td></tr>
+    </table>
+    <div style="height:1px;background:var(--border);margin:16px 0"></div>
+    <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:10px">Skor per Alternatif:</div>
+    ${entries.map(([name,score],i)=>`<div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+        <span>${i===0?'🥇 ':''}<strong>${name}</strong></span>
+        <span style="font-family:var(--mono);color:var(--accent)">${(score*100).toFixed(2)}%</span>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(score/mx*100).toFixed(1)}%;background:${CC[i]}"></div></div>
+    </div>`).join('')}`;
+  document.getElementById('modal-riwayat').classList.add('open');
+}
+
+function hapusRiwayat(){
+  if(!confirm('Hapus semua riwayat? Data tidak dapat dipulihkan.'))return;
+  DB.set('riwayat',[]);toast('Riwayat dihapus','warn');renderRiwayat();renderDashboard();
+}
+
+// ══════════════════════════════════════════
+// CRUD KRITERIA
+// ══════════════════════════════════════════
+function tambahKriteria(){
+  const kode=document.getElementById('k-kode').value.trim().toUpperCase();
+  const nama=document.getElementById('k-nama').value.trim();
+  const desc=document.getElementById('k-desc').value.trim();
+  const tipe=document.getElementById('k-tipe').value;
+  const prioritas=document.getElementById('k-prioritas').value;
+  if(!kode||!nama){toast('Kode dan nama wajib diisi!','error');return;}
+  const k=DB.get('kriteria')||[];
+  if(k.find(x=>x.kode===kode)){toast('Kode sudah ada!','error');return;}
+  k.push({kode,nama,desc,tipe,prioritas});DB.set('kriteria',k);
+  ['k-kode','k-nama','k-desc'].forEach(id=>document.getElementById(id).value='');
+  toast('Kriteria berhasil ditambahkan!');renderKriteria();
+}
+function hapusKriteria(i){
+  const k=DB.get('kriteria')||[];
+  if(!confirm(`Hapus kriteria "${k[i]?.nama}"?`))return;
+  k.splice(i,1);DB.set('kriteria',k);toast('Kriteria dihapus','warn');renderKriteria();
+}
+function resetKriteria(){
+  if(!confirm('Reset ke 5 kriteria default?'))return;
+  DB.set('kriteria',DK);DB.set('crit_matrix',DCM);DB.set('alt_matrices',DAM);
+  Object.keys(EV).forEach(k=>delete EV[k]);
+  toast('Kriteria direset ke default');renderKriteria();
+}
+
+// ══════════════════════════════════════════
+// CRUD ALTERNATIF
+// ══════════════════════════════════════════
+function tambahAlternatif(){
+  const kode=document.getElementById('a-kode').value.trim().toUpperCase();
+  const nama=document.getElementById('a-nama').value.trim();
+  const region=document.getElementById('a-region').value.trim();
+  const kat=document.getElementById('a-kat').value;
+  const plus=document.getElementById('a-plus').value.trim();
+  if(!kode||!nama){toast('Kode dan nama wajib diisi!','error');return;}
+  const a=DB.get('alternatif')||[];
+  if(a.find(x=>x.kode===kode)){toast('Kode sudah ada!','error');return;}
+  a.push({kode,nama,region,kat,plus});DB.set('alternatif',a);
+  ['a-kode','a-nama','a-region','a-plus'].forEach(id=>document.getElementById(id).value='');
+  toast('Provider berhasil ditambahkan!');renderAlternatif();
+}
+function hapusAlternatif(i){
+  const a=DB.get('alternatif')||[];
+  if(!confirm(`Hapus alternatif "${a[i]?.nama}"?`))return;
+  a.splice(i,1);DB.set('alternatif',a);toast('Alternatif dihapus','warn');renderAlternatif();
+}
+function resetAlternatif(){
+  if(!confirm('Reset ke 4 alternatif default?'))return;
+  DB.set('alternatif',DA);DB.set('alt_matrices',DAM);
+  Object.keys(EV).forEach(k=>delete EV[k]);
+  toast('Alternatif direset ke default');renderAlternatif();
+}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+initDB();
+navigate('dashboard');
+document.querySelectorAll('.modal-overlay').forEach(o=>
+  o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open')}));
+</script>
+</body>
+</html>
